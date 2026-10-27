@@ -5,8 +5,7 @@
         <el-card>
           <template #header>
             Subscription Converter
-            <svg-icon icon-class="github" style="margin-left: 20px" @click="goToProject" />
-
+            <!-- 已移除第三方 GitHub 推广图标 -->
             <div style="display: inline-block; position:absolute; right: 20px">{{ backendVersion }}</div>
           </template>
           <el-container>
@@ -27,11 +26,9 @@
 
               <div v-if="advanced === '2'">
                 <el-form-item label="后端地址:">
+                  <!-- 已移除前往项目仓库按钮，占位符已修改 -->
                   <el-autocomplete style="width: 100%" v-model="form.customBackend" :fetch-suggestions="backendSearch"
-                    placeholder="动动小手，（建议）自行搭建后端服务。例：http://127.0.0.1:25500/sub?">
-                    <template #append>
-                      <el-button @click="gotoGayhub" :icon="Link">前往项目仓库</el-button>
-                    </template>
+                    placeholder="输入本地私有后端服务地址。例：http://127.0.0.1:25500/sub?">
                   </el-autocomplete>
                 </el-form-item>
                 <el-form-item label="远程配置:">
@@ -137,31 +134,18 @@
                   </template>
                 </el-input>
               </el-form-item>
-              <el-form-item label="订阅短链:">
-                <el-input class="copy-content" disabled :model-value="curtomShortSubUrl">
-                  <template #append>
-                    <el-button :icon="DocumentCopy" @click="copyToClipboard(curtomShortSubUrl)">复制</el-button>
-                  </template>
-                </el-input>
-              </el-form-item>
+              <!-- 已移除“订阅短链”输入框 -->
 
               <!-- 操作按钮组 -->
               <el-form-item class="actions-row" label-width="0px" style="margin-top: 40px">
                 <el-button
-                  :style="buttonStyle"
+                  :style="{ width: '290px' }"
                   type="danger"
                   @click="makeUrlClick"
                   :disabled="!canGenerateUrl">
                   生成订阅链接
                 </el-button>
-                <el-button
-                  :style="buttonStyle"
-                  type="danger"
-                  @click="makeShortUrlClick"
-                  :loading="loading"
-                  :disabled="!canGenerateShortUrl">
-                  生成短链接
-                </el-button>
+                <!-- 已移除“生成短链接”按钮 -->
               </el-form-item>
 
               <el-form-item class="actions-row" label-width="0px">
@@ -182,17 +166,7 @@
                   一键导入 Clash
                 </el-button>
               </el-form-item>
-
-              <el-form-item class="actions-row" label-width="0px">
-                <el-button
-                  :style="{ width: '290px' }"
-                  type="primary"
-                  @click="dialogLoadConfigVisible = true"
-                  :icon="CopyDocument"
-                  :loading="loading">
-                  从 URL 解析
-                </el-button>
-              </el-form-item>
+              <!-- 已移除依赖第三方 API 的“从 URL 解析”功能 -->
             </el-form>
           </el-container>
         </el-card>
@@ -208,15 +182,7 @@
       @cancel="handleUploadCancel"
       @confirm="handleConfigUpload"
     />
-
-    <!-- URL解析对话框 -->
-    <UrlParseDialog
-      v-model:visible="dialogLoadConfigVisible"
-      :load-config="loadConfig"
-      :loading="parsing"
-      @cancel="handleLoadCancel"
-      @confirm="handleUrlParse"
-    />
+    <!-- 已移除 UrlParseDialog 对话框 -->
   </div>
 </template>
 
@@ -224,11 +190,9 @@
 import { h } from 'vue';
 import {
   Connection,
-  CopyDocument,
   Delete,
   DocumentCopy,
   InfoFilled,
-  Link,
   MagicStick,
   Plus,
   UploadFilled
@@ -242,38 +206,37 @@ import { REMOTE_CONFIGS } from '@/config/remote-configs';
 // 导入Composables
 import { useSubscriptionForm, addCustomParam, saveSubUrl as saveSubscriptionUrl } from '@/composables/useSubscriptionForm';
 import { useSubscription } from '@/composables/useSubscription';
-import { useGeneratedLinks } from '@/composables/useGeneratedLinks'
+import { useGeneratedLinks } from '@/composables/useGeneratedLinks';
 
 // 导入工具函数
 import { getLocalStorageItem } from '@/utils/storage';
 import { copyText } from '@/utils/clipboard';
-import { formatErrorMessage } from '@/utils/formatters'
+import { formatErrorMessage } from '@/utils/formatters';
 
-// 导入服务
+// 导入服务 (移除了短链接相关的 ShortUrlService)
 import { BackendService } from '@/services/backendService';
-import { ShortUrlService } from '@/services/shortUrlService';
 import { ConfigUploadService } from '@/services/configUploadService';
 
-// 导入组件
+// 导入组件 (移除了 UrlParseDialog)
 import ConfigUploadDialog from '@/components/ConfigUploadDialog.vue';
-import UrlParseDialog from '@/components/UrlParseDialog.vue';
 
 export default {
   name: 'Subconverter',
   components: {
     ConfigUploadDialog,
-    UrlParseDialog,
     MagicStick,
     Plus
   },
   data() {
     const subscriptionForm = useSubscriptionForm();
+    // 使用 Vite 环境变量，若未配置则回退到默认本地端口
+    const defaultBackend = import.meta.env.VITE_APP_SUBCONVERTER_DEFAULT_BACKEND || "http://127.0.0.1:25500/sub?";
 
     return {
       // 配置选项
       options: {
         clientTypes: CLIENT_TYPES,
-        backendOptions: [{ value: "http://127.0.0.1:25500/sub?" }],
+        backendOptions: [{ value: defaultBackend }],
         remoteConfig: REMOTE_CONFIGS
       },
 
@@ -281,10 +244,7 @@ export default {
       backendVersion: "",
       generatedLinks: useGeneratedLinks(),
       uploading: false,
-      parsing: false,
       dialogUploadConfigVisible: false,
-      loadConfig: "",
-      dialogLoadConfigVisible: false,
       uploadConfig: "",
       uploadResultUrl: "",
       subDocAdvanced: CONSTANTS.DOC_ADVANCED,
@@ -297,42 +257,14 @@ export default {
     };
   },
   computed: {
-    // 图标组件经 computed 暴露，避免放入 data 被转换为响应式对象
-    Connection() {
-      return Connection;
-    },
+    Connection() { return Connection; },
+    Delete() { return Delete; },
+    DocumentCopy() { return DocumentCopy; },
+    InfoFilled() { return InfoFilled; },
+    UploadFilled() { return UploadFilled; },
 
-    CopyDocument() {
-      return CopyDocument;
-    },
-
-    Delete() {
-      return Delete;
-    },
-
-    DocumentCopy() {
-      return DocumentCopy;
-    },
-
-    InfoFilled() {
-      return InfoFilled;
-    },
-
-    Link() {
-      return Link;
-    },
-
-    UploadFilled() {
-      return UploadFilled;
-    },
-
-    // 按钮统一样式
     buttonStyle() {
       return { width: '140px' };
-    },
-
-    canGenerateShortUrl() {
-      return this.customSubUrl.length > 0 && !this.loading;
     },
 
     canGenerateUrl() {
@@ -344,15 +276,11 @@ export default {
     },
 
     customSubUrl() {
-      return this.generatedLinks.longUrl
-    },
-
-    curtomShortSubUrl() {
-      return this.generatedLinks.shortUrl
+      return this.generatedLinks.longUrl;
     },
 
     loading() {
-      return this.uploading || this.parsing || this.generatedLinks.pending
+      return this.uploading || this.generatedLinks.pending;
     }
   },
   watch: {
@@ -366,7 +294,6 @@ export default {
     document.title = "Subscription Converter";
     this.isPC = this.$getOS().isPc;
 
-    // 获取 url cache
     if (import.meta.env.VITE_USE_STORAGE === 'true') {
       const cachedUrl = getLocalStorageItem('sourceSubUrl');
       if (cachedUrl) {
@@ -376,9 +303,13 @@ export default {
   },
   mounted() {
     this.form.clientType = CONSTANTS.DEFAULT_CLIENT_TYPE;
+    // 初始化后端地址为环境变量
+    if (!this.form.customBackend) {
+      this.form.customBackend = import.meta.env.VITE_APP_SUBCONVERTER_DEFAULT_BACKEND || "http://127.0.0.1:25500/sub?";
+    }
+    
     this.getBackendVersion();
 
-    // 延迟加载隐私提示，避免阻塞页面初始化
     this.notifyTimer = setTimeout(() => {
       this.notify();
     }, 1000);
@@ -391,132 +322,70 @@ export default {
       if (!text) {
         return false;
       }
-
       const copied = await copyText(text);
       if (copied) {
         this.$message.success(successMessage);
       } else {
         this.$message.error("复制失败，请手动选中链接复制");
       }
-
       return copied;
-    },
-
-    goToProject() {
-      window.open(CONSTANTS.PROJECT);
-    },
-
-    gotoGayhub() {
-      window.open(CONSTANTS.BACKEND_RELEASE);
     },
 
     clashInstall() {
       if (this.customSubUrl === "") {
-        this.$message.error("请先填写必填项，生成订阅链接")
-        return false
+        this.$message.error("请先填写必填项，生成订阅链接");
+        return false;
       }
-
-      window.open('clash://install-config?url=' + encodeURIComponent(this.generatedLinks.importUrl))
+      window.open('clash://install-config?url=' + encodeURIComponent(this.generatedLinks.importUrl));
     },
 
     makeUrlClick() {
-      const url = this.makeUrl(this.form, this.advanced, this.customParams)
+      const url = this.makeUrl(this.form, this.advanced, this.customParams);
       if (url) {
-        this.generatedLinks.setLongUrl(url)
-        this.copyToClipboard(this.customSubUrl, "定制订阅已复制到剪贴板")
+        this.generatedLinks.setLongUrl(url);
+        this.copyToClipboard(this.customSubUrl, "定制订阅已复制到剪贴板");
       } else {
-        this.$message.error("订阅链接与客户端为必填项")
-      }
-    },
-
-    async makeShortUrlClick() {
-      if (this.customSubUrl === '') {
-        this.$message.warning('请先生成订阅链接，再获取对应短链接')
-        return false
-      }
-      try {
-        const shortUrl = await this.generatedLinks.shorten(
-          url => ShortUrlService.generateShortUrl(this.$axios, url)
-        )
-        if (shortUrl) await this.copyToClipboard(shortUrl, '短链接已复制到剪贴板')
-      } catch (error) {
-        this.$message.error('短链接获取失败：' + formatErrorMessage(error))
+        this.$message.error("订阅链接与客户端为必填项");
       }
     },
 
     async confirmUploadConfig() {
-      if (this.uploading) return
+      if (this.uploading) return;
       if (this.uploadConfig.trim() === '') {
-        this.$message.warning('远程配置不能为空')
-        return false
+        this.$message.warning('远程配置不能为空');
+        return false;
       }
-      this.uploading = true
+      this.uploading = true;
       try {
-        const result = await ConfigUploadService.uploadConfig(this.$axios, this.uploadConfig, copyText)
-        this.form.remoteConfig = result.url
+        const result = await ConfigUploadService.uploadConfig(this.$axios, this.uploadConfig, copyText);
+        this.form.remoteConfig = result.url;
         if (result.copied) {
-          this.$message.success('远程配置上传成功，配置链接已复制到剪贴板，有效期三个月望知悉')
-          this.dialogUploadConfigVisible = false
-          this.uploadConfig = ''
-          this.uploadResultUrl = ''
+          this.$message.success('远程配置上传成功，配置链接已复制到剪贴板，有效期三个月望知悉');
+          this.dialogUploadConfigVisible = false;
+          this.uploadConfig = '';
+          this.uploadResultUrl = '';
         } else {
-          this.$message.error('复制失败，请手动选中链接复制')
-          this.uploadResultUrl = result.url
+          this.$message.error('复制失败，请手动选中链接复制');
+          this.uploadResultUrl = result.url;
         }
       } catch (error) {
-        this.$message.error('远程配置上传失败: ' + formatErrorMessage(error))
+        this.$message.error('远程配置上传失败: ' + formatErrorMessage(error));
       } finally {
-        this.uploading = false
+        this.uploading = false;
       }
     },
 
     handleUploadCancel() {
-      if (this.uploading) return
-      this.uploadConfig = ""
-      this.uploadResultUrl = ""
-      this.dialogUploadConfigVisible = false
+      if (this.uploading) return;
+      this.uploadConfig = "";
+      this.uploadResultUrl = "";
+      this.dialogUploadConfigVisible = false;
     },
 
     handleConfigUpload(configContent) {
-      if (this.uploading) return
-      this.uploadConfig = configContent
-      return this.confirmUploadConfig()
-    },
-
-    handleLoadCancel() {
-      if (this.parsing) return
-      this.loadConfig = ""
-      this.dialogLoadConfigVisible = false
-    },
-
-    handleUrlParse(url) {
-      if (this.parsing) return
-      this.loadConfig = url
-      return this.confirmLoadConfig()
-    },
-
-    async confirmLoadConfig() {
-      if (this.parsing) return
-      this.parsing = true
-      try {
-        const url = await ShortUrlService.resolveUrl(this.loadConfig)
-        const result = this.parseUrl(url)
-        if (!result.success) {
-          this.$message.error(result.message)
-          return false
-        }
-        this.form = result.form
-        this.customParams = result.customParams
-        this.dialogLoadConfigVisible = false
-        this.loadConfig = ''
-        this.$message.success('长/短链接已成功解析为订阅信息')
-        return true
-      } catch (error) {
-        this.$message.error(formatErrorMessage(error))
-        return false
-      } finally {
-        this.parsing = false
-      }
+      if (this.uploading) return;
+      this.uploadConfig = configContent;
+      return this.confirmUploadConfig();
     },
 
     backendSearch(queryString, cb) {
@@ -540,16 +409,15 @@ export default {
     notify() {
       this.$notify({
         title: "隐私提示",
-        type: "warning",
+        type: "success",
         message: h(
           "i",
           { style: "color: teal" },
-          "各种订阅链接（短链接服务除外）生成纯前端实现，无隐私问题。默认提供后端转换服务，隐私担忧者请自行搭建后端服务。"
+          "当前已启用完全本地化模式。已移除所有短链接与第三方API调用，确保您的订阅数据绝对安全。"
         )
       });
     },
 
-    // 表单相关方法
     saveSubUrl() {
       saveSubscriptionUrl(this.form);
     },
@@ -558,26 +426,19 @@ export default {
       addCustomParam(this.customParams);
     },
 
-    // 使用 composables
     ...useSubscription(CONSTANTS.DEFAULT_BACKEND)
   }
 };
 </script>
 
 <style scoped>
-/* el-form-item__content 在 Element Plus 中是 flex 容器，text-align 无法居中按钮 */
 .actions-row :deep(.el-form-item__content) {
   justify-content: center;
 }
-
-/* el-form-item__content 为 flex 容器，行宽默认由内容撑开，需显式占满 */
-/* 同时覆盖 Element Plus 中 el-row 默认的 flex-wrap: wrap，保持选项与按钮同行 */
 .options-row {
   width: 100%;
   flex-wrap: nowrap;
 }
-
-/* 占满剩余空间，将右侧选项按钮推至行尾 */
 .options-row :deep(.el-col) {
   flex: 1;
 }
